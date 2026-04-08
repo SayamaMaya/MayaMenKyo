@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天界免許証メーカー</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* UI用の丸ゴシックフォント */
+        @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap');
+        
+        body { 
+            font-family: 'M PLUS Rounded 1c', sans-serif; 
+            background-color: #f9fafb; 
+            color: #111827;
+        }
+
+        .soft-card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .input-field {
+            border: 1px solid #d1d5db;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+            padding: 0.5rem 1rem;
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            background-color: #ffffff;
+        }
+
+        .input-field:focus {
+            border-color: #111827;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.1);
+        }
+
+        .canvas-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+            line-height: 0;
+        }
+
+        canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .btn-primary {
+            background: #111827;
+            color: white;
+            font-weight: 700;
+            padding: 0.75rem 2rem;
+            border-radius: 9999px;
+            transition: background-color 0.2s;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background: #374151;
+        }
+
+        .label-text {
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            display: block;
+            color: #4b5563;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body class="py-10 px-4">
+    <div class="max-w-2xl mx-auto soft-card p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-black mb-2">天界免許証メーカー</h1>
+            <p class="text-sm text-gray-500">情報を入力してあなただけの免許証を発行しましょう</p>
+        </header>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div>
+                <label class="label-text">氏名</label>
+                <input type="text" id="inputName" value="さやままや" class="w-full input-field">
+            </div>
+            <div>
+                <label class="label-text">生年月日</label>
+                <input type="text" id="inputBirth" value="平成XX年04月12日" class="w-full input-field">
+            </div>
+            <div class="md:col-span-2">
+                <label class="label-text">住所</label>
+                <input type="text" id="inputAddress" value="天界 XX区 XX-XX" class="w-full input-field">
+            </div>
+            <div>
+                <label class="label-text">交付</label>
+                <input type="text" id="inputIssue" value="令和08年04月12日 00000" class="w-full input-field">
+            </div>
+            <div>
+                <label class="label-text">有効期限条件</label>
+                <input type="text" id="inputExpiry" value="その命が尽きる" class="w-full input-field">
+            </div>
+            <div>
+                <label class="label-text">免許証番号</label>
+                <input type="text" id="inputNumber" value="000000000000" class="w-full input-field">
+            </div>
+            <div>
+                <label class="label-text">種族</label>
+                <input type="text" id="inputRace" value="天使" class="w-full input-field">
+            </div>
+            <div>
+                <label class="label-text">好きなもの</label>
+                <input type="text" id="inputLikes" value="お絵描き、声劇" class="w-full input-field">
+            </div>
+            <div>
+                <label class="label-text">秘密</label>
+                <input type="text" id="inputSecret" value="XXXXXX" class="w-full input-field">
+            </div>
+            <div class="md:col-span-2">
+                <label class="label-text">顔写真（アップロード）</label>
+                <input type="file" id="inputPhoto" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-black hover:file:bg-gray-200">
+            </div>
+        </div>
+
+        <div class="flex flex-col items-center">
+            <div class="canvas-container mb-8">
+                <canvas id="cardCanvas" width="800" height="520"></canvas>
+            </div>
+            <button id="saveBtn" class="btn-primary">
+                別タブで開いて画像を保存
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('cardCanvas');
+        const ctx = canvas.getContext('2d');
+        let uploadedImage = null;
+
+        function drawTextVertical(text, x, centerY, font, color) {
+            ctx.font = font;
+            ctx.fillStyle = color;
+            ctx.textAlign = 'center';
+            const chars = text.split('');
+            const fontSize = parseInt(font.match(/\d+/));
+            const totalHeight = (chars.length - 1) * fontSize * 1.2;
+            const startY = centerY - (totalHeight / 2);
+            chars.forEach((char, i) => {
+                ctx.fillText(char, x, startY + (i * fontSize * 1.2));
+            });
+            ctx.textAlign = 'start';
+        }
+
+        function drawCard() {
+            const data = {
+                name: document.getElementById('inputName').value,
+                birth: document.getElementById('inputBirth').value,
+                address: document.getElementById('inputAddress').value,
+                issue: document.getElementById('inputIssue').value,
+                expiry: document.getElementById('inputExpiry').value,
+                number: document.getElementById('inputNumber').value,
+                race: document.getElementById('inputRace').value,
+                likes: document.getElementById('inputLikes').value,
+                secret: document.getElementById('inputSecret').value
+            };
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const cardW = 760;
+            const cardH = 480;
+            const cardX = (canvas.width - cardW) / 2;
+            const cardY = (canvas.height - cardH) / 2;
+
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(cardX, cardY, cardW, cardH, 20);
+            ctx.stroke();
+
+            const row1X = cardX + 20;
+            const row1Y = cardY + 20;
+            const row1W = cardW - 40;
+            ctx.beginPath();
+            ctx.roundRect(row1X, row1Y, row1W, 40, 20);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(row1X + 55, row1Y); ctx.lineTo(row1X + 55, row1Y + 40);
+            ctx.moveTo(row1X + 390, row1Y); ctx.lineTo(row1X + 390, row1Y + 40);
+            ctx.stroke();
+
+            ctx.fillStyle = "#000";
+            ctx.font = "14px sans-serif";
+            ctx.fillText("氏名", row1X + 15, row1Y + 25);
+            ctx.font = "bold 24px sans-serif";
+            ctx.fillText(data.name, row1X + 65, row1Y + 28);
+            ctx.font = "14px sans-serif";
+            ctx.fillText(data.birth + " 生", row1X + 400, row1Y + 25);
+
+            const mainWrapX = cardX + 20;
+            const mainWrapY = row1Y + 50;
+            const mainWrapW = cardW - 40;
+            const mainWrapH = 390; 
+            ctx.beginPath();
+            ctx.roundRect(mainWrapX, mainWrapY, mainWrapW, mainWrapH, 10);
+            ctx.stroke();
+
+            const photoW = 200;
+            const photoH = 267;
+            const photoX = mainWrapX + mainWrapW - 220;
+            const photoY = mainWrapY + 25;
+
+            const labelAreaW = 40; 
+            const infoMaxW = photoX - mainWrapX - labelAreaW; 
+            const contentStartY = mainWrapY + 10;
+
+            ctx.beginPath();
+            ctx.moveTo(mainWrapX, contentStartY + 35); ctx.lineTo(mainWrapX + infoMaxW, contentStartY + 35);
+            ctx.moveTo(mainWrapX + 55, contentStartY); ctx.lineTo(mainWrapX + 55, contentStartY + 35);
+            ctx.stroke();
+            ctx.font = "14px sans-serif";
+            ctx.fillText("住所", mainWrapX + 15, contentStartY + 22);
+            ctx.font = "18px sans-serif";
+            ctx.fillText(data.address, mainWrapX + 65, contentStartY + 24);
+
+            ctx.beginPath();
+            ctx.moveTo(mainWrapX, contentStartY + 70); ctx.lineTo(mainWrapX + infoMaxW, contentStartY + 70);
+            ctx.moveTo(mainWrapX + 55, contentStartY + 35); ctx.lineTo(mainWrapX + 55, contentStartY + 70);
+            ctx.stroke();
+            ctx.font = "14px sans-serif";
+            ctx.fillText("交付", mainWrapX + 15, contentStartY + 57);
+            ctx.font = "16px sans-serif";
+            ctx.fillText(data.issue, mainWrapX + 65, contentStartY + 57);
+
+            ctx.fillStyle = "#00b4eb";
+            ctx.fillRect(mainWrapX + 1, contentStartY + 71, infoMaxW - 1, 38);
+            ctx.fillStyle = "#000";
+            ctx.font = "bold 20px sans-serif";
+            ctx.fillText(data.expiry + " 日まで有効", mainWrapX + 25, contentStartY + 98);
+
+            const condY = contentStartY + 115;
+            ctx.beginPath();
+            ctx.moveTo(mainWrapX, condY); ctx.lineTo(mainWrapX + infoMaxW, condY);
+            ctx.moveTo(mainWrapX + 55, condY); ctx.lineTo(mainWrapX + 55, condY + 105);
+            ctx.stroke();
+            ctx.font = "10px sans-serif";
+            ctx.fillText("免許の", mainWrapX + 15, condY + 15);
+            ctx.fillText("条件等", mainWrapX + 15, condY + 30);
+
+            const numY = contentStartY + 230;
+            ctx.beginPath();
+            ctx.moveTo(mainWrapX, numY); ctx.lineTo(mainWrapX + infoMaxW, numY);
+            ctx.moveTo(mainWrapX + 55, numY); ctx.lineTo(mainWrapX + 55, numY + 35);
+            ctx.stroke();
+            ctx.font = "12px sans-serif";
+            ctx.fillText("番号", mainWrapX + 15, numY + 22);
+            ctx.font = "bold 22px sans-serif";
+            ctx.fillText("第 " + data.number + " 号", mainWrapX + 65, numY + 25);
+
+            const footerY = mainWrapY + mainWrapH - 50;
+            const hx = photoX + photoW - 55;
+            const hy = footerY - 15;
+            const stampSize = 45;
+            const stampBottomY = hy + stampSize;
+
+            drawTextVertical("天界免許証", photoX - 15, mainWrapY + 160, "bold 20px sans-serif", "#00b4eb");
+
+            const tableShiftX = 6;
+            const rowH = 20;
+            const tableX = mainWrapX + tableShiftX;
+            const tableWidth = 240 + (34 * 6);
+            const tableBottomY = stampBottomY; 
+            const tableY = tableBottomY - (rowH * 3);
+
+            ctx.strokeStyle = "#000";
+            ctx.beginPath();
+            ctx.moveTo(tableX, tableY); 
+            ctx.lineTo(tableX + tableWidth, tableY);
+            ctx.stroke();
+
+            // 下部テーブルのテキスト書き換え
+            const customFields = [
+                { label: "種族", value: data.race },
+                { label: "好きなもの", value: data.likes },
+                { label: "秘密", value: data.secret }
+            ];
+
+            customFields.forEach((f, i) => {
+                const y = tableY + (i * rowH);
+                ctx.strokeRect(tableX, y, 70, rowH);
+                ctx.strokeRect(tableX + 70, y, 170, rowH);
+                ctx.fillStyle = "#000";
+                ctx.font = "11px sans-serif";
+                ctx.fillText(f.label, tableX + 5, y + 14);
+                ctx.fillText(f.value, tableX + 75, y + 14);
+            });
+
+            const gridX = tableX + 240;
+            const gridW = 34;
+            const typeLabels = ["大型", "普通", "二輪", "小特", "原付", "他"];
+            for(let i=0; i<6; i++) {
+                const x = gridX + (i * gridW);
+                ctx.strokeRect(x, tableY, gridW, rowH * 3);
+                drawTextVertical(typeLabels[i], x + gridW/2, tableY + 20, "9px sans-serif", "#000");
+                ctx.fillStyle = "#000";
+                ctx.font = "14px sans-serif";
+                ctx.textAlign = 'center';
+                ctx.fillText("-", x + gridW/2, tableY + 52);
+                ctx.textAlign = 'start';
+            }
+
+            if (uploadedImage) {
+                const imgRatio = uploadedImage.width / uploadedImage.height;
+                const targetRatio = photoW / photoH;
+                let sx, sy, sw, sh;
+                if (imgRatio > targetRatio) {
+                    sh = uploadedImage.height; sw = sh * targetRatio;
+                    sx = (uploadedImage.width - sw) / 2; sy = 0;
+                } else {
+                    sw = uploadedImage.width; sh = sw / targetRatio;
+                    sx = 0; sy = (uploadedImage.height - sh) / 2;
+                }
+                ctx.drawImage(uploadedImage, sx, sy, sw, sh, photoX, photoY, photoW, photoH);
+            } else {
+                ctx.fillStyle = "#edf2f7";
+                ctx.fillRect(photoX, photoY, photoW, photoH);
+                ctx.fillStyle = "#cbd5e0";
+                ctx.textAlign = "center";
+                ctx.font = "12px sans-serif";
+                ctx.fillText("No Photo", photoX + photoW/2, photoY + photoH/2);
+                ctx.textAlign = "start";
+            }
+
+            ctx.fillStyle = "#ff69b4";
+            ctx.font = "14px sans-serif";
+            ctx.textAlign = 'left';
+            ctx.fillText("さやままや", photoX, footerY);
+            ctx.fillText("公安委員会", photoX, footerY + 20);
+
+            ctx.strokeStyle = "#ff69b4";
+            ctx.strokeRect(hx, hy, stampSize, stampSize);
+            ctx.font = "bold 13px serif";
+            ctx.fillText("狭山", hx + 8, hy + 20);
+            ctx.fillText("まや", hx + 8, hy + 38);
+            
+            ctx.textAlign = 'start';
+        }
+
+        const inputs = ['inputName', 'inputBirth', 'inputAddress', 'inputIssue', 'inputExpiry', 'inputNumber', 'inputRace', 'inputLikes', 'inputSecret'];
+        inputs.forEach(id => document.getElementById(id).addEventListener('input', drawCard));
+
+        document.getElementById('inputPhoto').addEventListener('change', function(e) {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+            
+            const fileArray = Array.from(files);
+            const firstFile = fileArray.shift();
+            
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => { uploadedImage = img; drawCard(); };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(firstFile);
+        });
+
+        document.getElementById('saveBtn').addEventListener('click', function() {
+            const dataUrl = canvas.toDataURL('image/png');
+            const win = window.open();
+            if (win) {
+                win.document.write('<div style="display:flex;justify-content:center;padding:20px;background:#f9fafb;height:100vh;"><img src="' + dataUrl + '" style="max-width:90%; height:auto; box-shadow:0 10px 20px rgba(0,0,0,0.2); border-radius:10px;"></div>');
+                win.document.close();
+            }
+        });
+
+        window.onload = drawCard;
+    </script>
+</body>
+</html>
